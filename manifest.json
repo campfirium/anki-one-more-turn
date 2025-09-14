@@ -1,0 +1,10 @@
+{
+    "name": "OneMoreTurn",
+    "package": "one_more_turn",
+    "ankiweb_id": "your_ankiweb_id_here",
+    "author": "Your Name",
+    "version": "1.0.0",
+    "homepage": "https://github.com/yourusername/one_more_turn",
+    "conflicts": [],
+    "mod": 0
+}

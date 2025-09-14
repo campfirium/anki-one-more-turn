@@ -1,0 +1,13 @@
+# AI 和个人笔记，不上传
+.claude/
+CLAUDE.md
+
+# Demo 文件夹，不上传
+.demo/
+
+# Python 自动生成的缓存文件，不上传
+__pycache__/
+
+# VS Code 的本地配置文件，不上传
+.vscode/
+
