@@ -27,15 +27,7 @@ counter = 0
 last_total = 0
 last_counter = 0
 
-# 谚语列表
-default_quotes = [
-    "塵も積もれば山となる",
-    "雨垂れ石を穿つ",
-    "千里の道も一歩から",
-    "継続は力なり",
-    "石の上にも三年",
-    "小さなことからコツコツと"
-]
+# 以前的日语谚语列表已删除，现在使用配置中的自定义文本
 
 # 创建计数器标签
 counter_label = None
@@ -48,26 +40,61 @@ short_trigger_points = []
 next_long_trigger_index = 0
 next_short_trigger_index = 0
 
-# 更新配置
+# 加载配置
 config = mw.addonManager.getConfig(__name__)
-if 'popup_width' not in config or config['popup_width'] is None:
-    config['popup_width'] = int(QApplication.primaryScreen().geometry().width() / 3)
-if 'popup_height' not in config or config['popup_height'] is None:
-    config['popup_height'] = int(QApplication.primaryScreen().geometry().height() / 6)
-if 'popup_offset_x' not in config or config['popup_offset_x'] is None:
-    config['popup_offset_x'] = 0
-if 'popup_offset_y' not in config or config['popup_offset_y'] is None:
-    config['popup_offset_y'] = 0
-if 'image_folder' not in config or config['image_folder'] is None:
-    config['image_folder'] = ""
-if 'use_images' not in config or config['use_images'] is None:
-    config['use_images'] = False
-if 'auto_close' not in config:
-    config['auto_close'] = False
-if 'auto_close_duration' not in config:
-    config['auto_close_duration'] = 3000  # 默认3秒，单位为毫秒
 
-mw.addonManager.writeConfig(__name__, config)
+# 只在必要时添加缺失的新参数，不覆盖现有配置
+def ensure_config_keys():
+    global config
+    config_changed = False
+
+    # 定义当前版本需要的所有参数及其默认值（根据正确界面截图）
+    required_keys = {
+        'short_cards_completed': 10,
+        'short_auto_close': True,
+        'short_auto_close_duration': 2000,  # 2秒 = 2000毫秒
+        'short_use_text_popup': True,
+        'short_font_size': 16,
+        'short_custom_quotes': '+10 XP\nLEVEL UP!',
+        'short_text_width': 1200,
+        'short_text_height': 400,
+        'short_text_offset_x': 0,
+        'short_text_offset_y': 10,  # 10%
+        'short_use_image_popup': False,
+        'short_image_folder': '',
+        'short_image_width': 2480,
+        'short_image_height': 1620,
+        'short_image_offset_x': 0,
+        'short_image_offset_y': 0,
+        'long_cards_completed': 50,
+        'long_auto_close': True,
+        'long_auto_close_duration': 5000,  # 5秒 = 5000毫秒
+        'long_use_text_popup': True,
+        'long_font_size': 24,
+        'long_custom_quotes': 'Great oaks from little acorns grow.\nThe constant drip hollows the stone.\nFrom tiny sparks grow mighty flames.\nPatience is bitter, but its fruit is sweet.\nConsistency is the mother of mastery.',
+        'long_text_width': 2400,
+        'long_text_height': 600,
+        'long_text_offset_x': 0,
+        'long_text_offset_y': 10,  # 10%
+        'long_use_image_popup': False,
+        'long_image_folder': '',
+        'long_image_width': 3920,
+        'long_image_height': 2160,
+        'long_image_offset_x': 0,
+        'long_image_offset_y': 0
+    }
+
+    # 只添加缺失的键，不覆盖现有的
+    for key, default_value in required_keys.items():
+        if key not in config:
+            config[key] = default_value
+            config_changed = True
+
+    # 如果有变化，保存配置
+    if config_changed:
+        mw.addonManager.writeConfig(__name__, config)
+
+ensure_config_keys()
 
 # 修改常量定义
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "image_history.json")
@@ -129,8 +156,8 @@ def delete_image(path):
 
 def generate_trigger_points():
     global long_trigger_points, short_trigger_points
-    long_interval = config.get('long_cards_completed', 4)
-    short_interval = config.get('short_cards_completed', 2)
+    long_interval = config.get('long_cards_completed', 50)
+    short_interval = config.get('short_cards_completed', 10)
     max_points = 100  # 可以根据需要调整
 
     long_trigger_points = list(range(long_interval, max_points * long_interval + 1, long_interval))
@@ -177,34 +204,32 @@ def show_quote(is_long_progress=False):
 
     # 读取配置（与当前版保持一致的键名与默认值）
     if is_long_progress:
-        use_custom_quotes = config.get('long_use_custom_quotes', False)
         custom_quotes = config.get('long_custom_quotes', "+10 XP\nLEVEL UP!")
-        popup_width = config.get('long_popup_width', 1400)
-        popup_height = config.get('long_popup_height', 280)
-        x_offset = config.get('long_x_offset', 0)
-        y_offset = config.get('long_y_offset', -22)
+        popup_width = config.get('long_image_width', 3920)
+        popup_height = config.get('long_image_height', 2160)
+        x_offset = config.get('long_image_offset_x', 0)
+        y_offset = config.get('long_image_offset_y', 0)
         auto_close = config.get('long_auto_close', True)
-        auto_close_duration = config.get('long_auto_close_duration', 5) * 1000
-        use_images = config.get('long_use_images', False)
+        auto_close_duration = config.get('long_auto_close_duration', 5000)
+        use_images = config.get('long_use_image_popup', False)
         image_folder = config.get('long_image_folder', "")
     else:
-        use_custom_quotes = config.get('short_use_custom_quotes', False)
         custom_quotes = config.get('short_custom_quotes', "+10 XP\nLEVEL UP!")
-        popup_width = config.get('short_popup_width', 700)
-        popup_height = config.get('short_popup_height', 140)
-        x_offset = config.get('short_x_offset', 0)
-        y_offset = config.get('short_y_offset', -22)
+        popup_width = config.get('short_image_width', 2480)
+        popup_height = config.get('short_image_height', 1620)
+        x_offset = config.get('short_image_offset_x', 0)
+        y_offset = config.get('short_image_offset_y', 0)
         auto_close = config.get('short_auto_close', True)
-        auto_close_duration = config.get('short_auto_close_duration', 5) * 1000
-        use_images = config.get('short_use_images', False)
+        auto_close_duration = config.get('short_auto_close_duration', 2000)
+        use_images = config.get('short_use_image_popup', False)
         image_folder = config.get('short_image_folder', "")
 
-    # 处理自定义引用中的空行
-    if use_custom_quotes and custom_quotes:
+    # 使用配置中的自定义文本（不再使用旧的日语默认列表）
+    if custom_quotes:
         quotes = [q.strip() for q in custom_quotes.split('\n') if q.strip()]
         quote = random.choice(quotes) if quotes else "+10 XP\nLEVEL UP!"
     else:
-        quote = random.choice(default_quotes)
+        quote = "+10 XP\nLEVEL UP!"
 
     # 判断是否有图片可用
     image_path = None
@@ -337,9 +362,9 @@ def show_quote(is_long_progress=False):
         # 获取文本弹窗的具体设置
         text_width = config.get(f'{("long" if is_long_progress else "short")}_text_width', 1200 if not is_long_progress else 2400)
         text_height = config.get(f'{("long" if is_long_progress else "short")}_text_height', 400 if not is_long_progress else 600)
-        font_size = config.get(f'{("long" if is_long_progress else "short")}_font_size', 16)
+        font_size = config.get(f'{("long" if is_long_progress else "short")}_font_size', 24 if is_long_progress else 16)
         text_x_offset = config.get(f'{("long" if is_long_progress else "short")}_text_x_offset', 0)
-        text_y_offset = config.get(f'{("long" if is_long_progress else "short")}_text_y_offset', 0)
+        text_y_offset = config.get(f'{("long" if is_long_progress else "short")}_text_y_offset', 10)
         
         # 创建标签
         label = QLabel(quote)
@@ -542,7 +567,7 @@ def create_compact_common_settings(prefix):
     top_layout.addWidget(QLabel("Cards Completed:"))
     cards_completed = QSpinBox()
     cards_completed.setRange(1, 1000)
-    cards_completed.setValue(config.get(f'{prefix}_cards_completed', 2 if prefix == 'long' else 1))
+    cards_completed.setValue(config.get(f'{prefix}_cards_completed', 50 if prefix == 'long' else 10))
     cards_completed.setObjectName(f'{prefix}_cards_completed')
     cards_completed.setFixedWidth(120)  # 减半宽度
     top_layout.addWidget(cards_completed)
@@ -561,7 +586,7 @@ def create_compact_common_settings(prefix):
     
     auto_close_duration = QSpinBox()
     auto_close_duration.setRange(1, 60)
-    auto_close_duration.setValue(config.get(f'{prefix}_auto_close_duration', 5))
+    auto_close_duration.setValue(config.get(f'{prefix}_auto_close_duration', 5000) // 1000)
     auto_close_duration.setObjectName(f'{prefix}_auto_close_duration')
     auto_close_duration.setFixedWidth(120)  # 固定宽度
     auto_close_layout.addWidget(auto_close_duration)
@@ -584,7 +609,7 @@ def create_compact_text_settings(prefix):
     # 标题行 - Text Popup Settings 和 Font 设置
     title_layout = QHBoxLayout()
     use_text = QCheckBox("Text Popup Settings")
-    use_text.setChecked(not config.get(f'{prefix}_use_images', False))
+    use_text.setChecked(not config.get(f'{prefix}_use_image_popup', False))
     use_text.setObjectName(f'{prefix}_use_text')
     use_text.setFont(QFont("Arial", 10, QFont.Weight.Bold))
     title_layout.addWidget(use_text)
@@ -594,7 +619,7 @@ def create_compact_text_settings(prefix):
     title_layout.addWidget(QLabel("Font (pt):"))
     font_size = QSpinBox()
     font_size.setRange(8, 72)
-    font_size.setValue(config.get(f'{prefix}_font_size', 18))
+    font_size.setValue(config.get(f'{prefix}_font_size', 24 if prefix == 'long' else 16))
     font_size.setObjectName(f'{prefix}_font_size')
     font_size.setFixedWidth(120)  # 与width一致
     title_layout.addWidget(font_size)
@@ -615,7 +640,7 @@ def create_compact_text_settings(prefix):
     size_layout.addWidget(width_label)
     text_width = QSpinBox()
     text_width.setRange(100, 99999)  # 与图片弹窗保持一致的范围
-    text_width.setValue(config.get(f'{prefix}_text_width', 300))  
+    text_width.setValue(config.get(f'{prefix}_text_width', 2400 if prefix == 'long' else 1200))  
     text_width.setObjectName(f'{prefix}_text_width')
     text_width.setFixedWidth(120)  # 固定宽度对齐
     size_layout.addWidget(text_width)
@@ -626,7 +651,7 @@ def create_compact_text_settings(prefix):
     size_layout.addWidget(height_label)
     text_height = QSpinBox()
     text_height.setRange(100, 99999)  # 与图片弹窗保持一致的范围
-    text_height.setValue(config.get(f'{prefix}_text_height', 100))  
+    text_height.setValue(config.get(f'{prefix}_text_height', 600 if prefix == 'long' else 400))  
     text_height.setObjectName(f'{prefix}_text_height')
     text_height.setFixedWidth(120)  # 固定宽度对齐
     size_layout.addWidget(text_height)
@@ -652,7 +677,7 @@ def create_compact_text_settings(prefix):
     offset_layout.addWidget(offset_y_label)
     text_y_offset = QSpinBox()
     text_y_offset.setRange(-100, 100)
-    text_y_offset.setValue(config.get(f'{prefix}_text_y_offset', -22))
+    text_y_offset.setValue(config.get(f'{prefix}_text_y_offset', 10))
     text_y_offset.setObjectName(f'{prefix}_text_y_offset')
     text_y_offset.setSuffix("%")
     text_y_offset.setFixedWidth(120)  # 固定宽度对齐
@@ -671,8 +696,8 @@ def create_compact_image_settings(prefix):
     
     # 启用图片模式的复选框作为标题
     use_images = QCheckBox("Image Popup Settings")
-    use_images.setChecked(config.get(f'{prefix}_use_images', False))
-    use_images.setObjectName(f'{prefix}_use_images')
+    use_images.setChecked(config.get(f'{prefix}_use_image_popup', False))
+    use_images.setObjectName(f'{prefix}_use_image_popup')
     use_images.setFont(QFont("Arial", 10, QFont.Weight.Bold))
     layout.addRow(use_images)
     
@@ -698,8 +723,8 @@ def create_compact_image_settings(prefix):
     size_layout.addWidget(width_label)
     popup_width = QSpinBox()
     popup_width.setRange(100, 99999)
-    popup_width.setValue(config.get(f'{prefix}_popup_width', 1400 if prefix == 'long' else 700))
-    popup_width.setObjectName(f'{prefix}_popup_width')
+    popup_width.setValue(config.get(f'{prefix}_image_width', 3920 if prefix == 'long' else 2480))
+    popup_width.setObjectName(f'{prefix}_image_width')
     popup_width.setFixedWidth(120)  # 固定宽度对齐
     size_layout.addWidget(popup_width)
     size_layout.addStretch()
@@ -709,8 +734,8 @@ def create_compact_image_settings(prefix):
     size_layout.addWidget(height_label)
     popup_height = QSpinBox()
     popup_height.setRange(100, 99999)
-    popup_height.setValue(config.get(f'{prefix}_popup_height', 280 if prefix == 'long' else 140))
-    popup_height.setObjectName(f'{prefix}_popup_height')
+    popup_height.setValue(config.get(f'{prefix}_image_height', 2160 if prefix == 'long' else 1620))
+    popup_height.setObjectName(f'{prefix}_image_height')
     popup_height.setFixedWidth(120)  # 固定宽度对齐
     size_layout.addWidget(popup_height)
     
@@ -723,8 +748,8 @@ def create_compact_image_settings(prefix):
     offset_layout.addWidget(offset_x_label)
     x_offset = QSpinBox()
     x_offset.setRange(-100, 100)
-    x_offset.setValue(config.get(f'{prefix}_x_offset', 0))
-    x_offset.setObjectName(f'{prefix}_x_offset')
+    x_offset.setValue(config.get(f'{prefix}_image_offset_x', 0))
+    x_offset.setObjectName(f'{prefix}_image_offset_x')
     x_offset.setSuffix("%")
     x_offset.setFixedWidth(120)  # 固定宽度对齐
     offset_layout.addWidget(x_offset)
@@ -735,8 +760,8 @@ def create_compact_image_settings(prefix):
     offset_layout.addWidget(offset_y_label)
     y_offset = QSpinBox()
     y_offset.setRange(-100, 100)
-    y_offset.setValue(config.get(f'{prefix}_y_offset', -22))
-    y_offset.setObjectName(f'{prefix}_y_offset')
+    y_offset.setValue(config.get(f'{prefix}_image_offset_y', 0))
+    y_offset.setObjectName(f'{prefix}_image_offset_y')
     y_offset.setSuffix("%")
     y_offset.setFixedWidth(120)  # 固定宽度对齐
     offset_layout.addWidget(y_offset)
@@ -760,7 +785,7 @@ def setup_simple_highlighting(text_group, image_group, prefix):
     """设置简单的高亮效果"""
     # 查找复选框
     use_text = text_group.findChild(QCheckBox, f'{prefix}_use_text')
-    use_images = image_group.findChild(QCheckBox, f'{prefix}_use_images')
+    use_images = image_group.findChild(QCheckBox, f'{prefix}_use_image_popup')
     
     def update_highlighting():
         text_enabled = use_text.isChecked() if use_text else False
@@ -825,12 +850,16 @@ def save_panel_settings(dialog):
                 
             # 处理不同类型的控件
             if isinstance(child, QSpinBox):
-                config[obj_name] = child.value()
+                if obj_name.endswith('_auto_close_duration'):
+                    # auto_close_duration 需要从秒转换为毫秒
+                    config[obj_name] = child.value() * 1000
+                else:
+                    config[obj_name] = child.value()
             elif isinstance(child, QCheckBox):
-                # 特殊处理use_text复选框，转换为use_images的反向值
+                # 特殊处理use_text复选框，转换为use_image_popup的反向值
                 if obj_name.endswith('_use_text'):
                     prefix = obj_name.replace('_use_text', '')
-                    config[f'{prefix}_use_images'] = not child.isChecked()
+                    config[f'{prefix}_use_image_popup'] = not child.isChecked()
                 else:
                     config[obj_name] = child.isChecked()
             elif isinstance(child, QLineEdit):
@@ -838,9 +867,6 @@ def save_panel_settings(dialog):
             elif isinstance(child, QPlainTextEdit):
                 config[obj_name] = child.toPlainText()
     
-    # 设置custom_quotes为默认启用（因为我们移除了use_custom_quotes复选框）
-    for prefix in ['short', 'long']:
-        config[f'{prefix}_use_custom_quotes'] = True
     
     # 写入配置文件
     mw.addonManager.writeConfig(__name__, config)
