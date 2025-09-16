@@ -558,7 +558,7 @@ def create_about_section():
 
     # 版本信息和作者信息
     version = get_version_from_manifest()
-    author_info = 'by Roamer (<a href="https://campfirium.info/" style="color: #4a9eff; text-decoration: none;">campfirium</a>)'
+    author_info = 'by Roamer (<a href="https://campfirium.info/" style="color: #4a9eff; text-decoration: none;">Campfirium</a>)'
     version_label = QLabel(f"OneMoreTurn v{version} {author_info}")
     version_label.setStyleSheet("QLabel { color: #888888; font-size: 11px; }")
     version_label.setOpenExternalLinks(False)
@@ -573,7 +573,7 @@ def create_about_section():
 
     # 定义链接
     links = [
-        ("Showbox", "https://github.com/campfirium/anki-one-more-turn"),
+        ("Showcase", "https://github.com/campfirium/anki-one-more-turn"),
         ("Feedback", "https://github.com/campfirium/anki-one-more-turn"),
         ("Support", "https://github.com/campfirium/anki-one-more-turn"),
         ("Source", "https://github.com/campfirium/anki-one-more-turn")
