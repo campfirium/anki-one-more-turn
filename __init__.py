@@ -8,6 +8,7 @@ from aqt.gui_hooks import reviewer_did_answer_card, state_did_undo, state_did_ch
 from aqt.qt import QFileDialog
 import json
 import time
+import webbrowser
 from aqt import gui_hooks
 # 安全删除：优先回收站，失败则物理删除
 def safe_delete_file(path):
@@ -516,14 +517,90 @@ def on_settings():
     columns_layout.addWidget(long_panel)
     
     layout.addLayout(columns_layout)
-    
+
     # 保存按钮
     save_button = QPushButton("Save Settings")
     save_button.clicked.connect(lambda: save_panel_settings(dialog))
     layout.addWidget(save_button)
-    
+
+    # 添加关于区域
+    about_section = create_about_section()
+    layout.addWidget(about_section)
+
     dialog.setLayout(layout)
     dialog.exec()
+
+def get_version_from_manifest():
+    """从manifest.json读取版本号"""
+    try:
+        manifest_path = os.path.join(os.path.dirname(__file__), "manifest.json")
+        with open(manifest_path, 'r', encoding='utf-8') as f:
+            manifest = json.load(f)
+            return manifest.get('version', '1.0.0')
+    except Exception:
+        return '1.0.0'
+
+def create_about_section():
+    """创建关于区域"""
+    about_widget = QWidget()
+    about_layout = QVBoxLayout(about_widget)
+    about_layout.setContentsMargins(20, 10, 20, 10)
+
+    # 分隔线
+    line = QFrame()
+    line.setFrameShape(QFrame.Shape.HLine)
+    line.setFrameShadow(QFrame.Shadow.Sunken)
+    line.setStyleSheet("QFrame { color: #666666; }")
+    about_layout.addWidget(line)
+
+    # 关于信息布局
+    info_layout = QHBoxLayout()
+
+    # 版本信息
+    version = get_version_from_manifest()
+    version_label = QLabel(f"OneMoreTurn v{version}")
+    version_label.setStyleSheet("QLabel { color: #888888; font-size: 11px; }")
+    info_layout.addWidget(version_label)
+
+    info_layout.addStretch()
+
+    # 链接区域
+    links_layout = QHBoxLayout()
+    links_layout.setSpacing(15)
+
+    # 定义链接
+    links = [
+        ("Showbox", "https://github.com/campfirium/anki-one-more-turn"),
+        ("Feedback", "https://github.com/campfirium/anki-one-more-turn"),
+        ("Support", "https://github.com/campfirium/anki-one-more-turn"),
+        ("Source", "https://github.com/campfirium/anki-one-more-turn")
+    ]
+
+    def create_link_label(text, url):
+        """创建可点击的链接标签"""
+        label = QLabel(f'<a href="{url}" style="color: #4a9eff; text-decoration: none;">{text}</a>')
+        label.setOpenExternalLinks(False)  # 禁用默认的链接打开行为
+        label.linkActivated.connect(lambda link: webbrowser.open(link))
+        label.setStyleSheet("QLabel { font-size: 11px; }")
+        label.setCursor(Qt.CursorShape.PointingHandCursor)
+        return label
+
+    # 添加链接
+    for text, url in links:
+        link_label = create_link_label(text, url)
+        links_layout.addWidget(link_label)
+
+    info_layout.addLayout(links_layout)
+    about_layout.addLayout(info_layout)
+
+    # 设置深色/浅色模式兼容的样式
+    about_widget.setStyleSheet("""
+        QWidget {
+            background-color: transparent;
+        }
+    """)
+
+    return about_widget
 
 def create_settings_panel(prefix, title):
     """创建设置面板"""
