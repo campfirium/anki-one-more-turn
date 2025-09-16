@@ -54,7 +54,6 @@ def ensure_config_keys():
         'short_cards_completed': 10,
         'short_auto_close': True,
         'short_auto_close_duration': 2000,  # 2秒 = 2000毫秒
-        'short_use_text_popup': True,
         'short_font_size': 16,
         'short_custom_quotes': '+10 XP\nLEVEL UP!',
         'short_text_width': 1200,
@@ -70,7 +69,6 @@ def ensure_config_keys():
         'long_cards_completed': 50,
         'long_auto_close': True,
         'long_auto_close_duration': 5000,  # 5秒 = 5000毫秒
-        'long_use_text_popup': True,
         'long_font_size': 24,
         'long_custom_quotes': 'Great oaks from little acorns grow.\nThe constant drip hollows the stone.\nFrom tiny sparks grow mighty flames.\nPatience is bitter, but its fruit is sweet.\nConsistency is the mother of mastery.',
         'long_text_width': 2400,
@@ -690,7 +688,6 @@ def create_compact_text_settings(prefix):
     title_layout = QHBoxLayout()
     use_text = QCheckBox("Text Popup Settings")
     use_text.setChecked(not config.get(f'{prefix}_use_image_popup', False))
-    use_text.setObjectName(f'{prefix}_use_text')
     use_text.setFont(QFont("Arial", 10, QFont.Weight.Bold))
     title_layout.addWidget(use_text)
     title_layout.addStretch()
@@ -864,7 +861,11 @@ def choose_image_folder(line_edit):
 def setup_simple_highlighting(text_group, image_group, prefix):
     """设置简单的高亮效果"""
     # 查找复选框
-    use_text = text_group.findChild(QCheckBox, f'{prefix}_use_text')
+    use_text = None
+    for checkbox in text_group.findChildren(QCheckBox):
+        if checkbox.text() == "Text Popup Settings":
+            use_text = checkbox
+            break
     use_images = image_group.findChild(QCheckBox, f'{prefix}_use_image_popup')
     
     def update_highlighting():
@@ -936,12 +937,7 @@ def save_panel_settings(dialog):
                 else:
                     config[obj_name] = child.value()
             elif isinstance(child, QCheckBox):
-                # 特殊处理use_text复选框，转换为use_image_popup的反向值
-                if obj_name.endswith('_use_text'):
-                    prefix = obj_name.replace('_use_text', '')
-                    config[f'{prefix}_use_image_popup'] = not child.isChecked()
-                else:
-                    config[obj_name] = child.isChecked()
+                config[obj_name] = child.isChecked()
             elif isinstance(child, QLineEdit):
                 config[obj_name] = child.text()
             elif isinstance(child, QPlainTextEdit):
