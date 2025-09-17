@@ -91,7 +91,14 @@ def ensure_config_keys():
 
     # 如果有变化，保存配置
     if config_changed:
-        mw.addonManager.writeConfig(__name__, config)
+        try:
+            mw.addonManager.writeConfig(__name__, config)
+        except FileNotFoundError:
+            # 如果meta.json文件不存在，静默忽略，这在插件初始化时是正常的
+            pass
+        except Exception:
+            # 忽略其他配置写入错误，不影响插件正常运行
+            pass
 
 ensure_config_keys()
 
@@ -942,10 +949,45 @@ def save_panel_settings(dialog):
                 config[obj_name] = child.text()
             elif isinstance(child, QPlainTextEdit):
                 config[obj_name] = child.toPlainText()
-    
-    
+
+
     # 写入配置文件
-    mw.addonManager.writeConfig(__name__, config)
+    try:
+        mw.addonManager.writeConfig(__name__, config)
+    except FileNotFoundError as e:
+        # 如果meta.json文件不存在，尝试创建基本的meta.json文件
+        try:
+            addon_dir = os.path.dirname(__file__)
+            meta_path = os.path.join(addon_dir, "meta.json")
+
+            # 创建基本的meta.json结构
+            meta_data = {
+                "config": config,
+                "disabled": False,
+                "mod": 0,
+                "conflicts": [],
+                "max_point_version": 0,
+                "min_point_version": 0,
+                "branch_index": 0,
+                "update_enabled": True
+            }
+
+            with open(meta_path, 'w', encoding='utf-8') as f:
+                json.dump(meta_data, f, indent=2, ensure_ascii=False)
+
+            # 再次尝试写入配置
+            mw.addonManager.writeConfig(__name__, config)
+        except Exception as write_error:
+            # 如果仍然失败，显示错误信息但不阻止用户继续使用
+            mw.utils.showWarning(f"Warning: Could not save settings to meta.json file. "
+                               f"Settings may not persist after restart.\n\n"
+                               f"Error: {str(write_error)}")
+    except Exception as e:
+        # 处理其他可能的写入错误
+        mw.utils.showWarning(f"Warning: Could not save settings. "
+                           f"Settings may not persist after restart.\n\n"
+                           f"Error: {str(e)}")
+
     generate_trigger_points()  # 重新生成触发点
     dialog.accept()
 
