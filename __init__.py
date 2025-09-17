@@ -21,7 +21,12 @@ def safe_delete_file(path):
 
 
 # 加载设置
-config = mw.addonManager.getConfig(__name__)
+try:
+    config = mw.addonManager.getConfig(__name__)
+    if config is None:
+        config = {}
+except Exception:
+    config = {}
 
 # 初始化计数器
 counter = 0
@@ -41,8 +46,8 @@ short_trigger_points = []
 next_long_trigger_index = 0
 next_short_trigger_index = 0
 
-# 加载配置
-config = mw.addonManager.getConfig(__name__)
+# 配置已经在上面加载过了，不需要重复加载
+# config = mw.addonManager.getConfig(__name__)  # 删除重复加载
 
 # 只在必要时添加缺失的新参数，不覆盖现有配置
 def ensure_config_keys():
@@ -54,6 +59,7 @@ def ensure_config_keys():
         'short_cards_completed': 10,
         'short_auto_close': True,
         'short_auto_close_duration': 2000,  # 2秒 = 2000毫秒
+        'short_use_text_popup': True,  # 添加缺失的关键配置项
         'short_font_size': 16,
         'short_custom_quotes': '+10 XP\nLEVEL UP!',
         'short_text_width': 1200,
@@ -69,6 +75,7 @@ def ensure_config_keys():
         'long_cards_completed': 50,
         'long_auto_close': True,
         'long_auto_close_duration': 5000,  # 5秒 = 5000毫秒
+        'long_use_text_popup': True,  # 添加缺失的关键配置项
         'long_font_size': 24,
         'long_custom_quotes': 'Great oaks from little acorns grow.\nThe constant drip hollows the stone.\nFrom tiny sparks grow mighty flames.\nPatience is bitter, but its fruit is sweet.\nConsistency is the mother of mastery.',
         'long_text_width': 2400,
@@ -91,7 +98,14 @@ def ensure_config_keys():
 
     # 如果有变化，保存配置
     if config_changed:
-        mw.addonManager.writeConfig(__name__, config)
+        try:
+            mw.addonManager.writeConfig(__name__, config)
+        except FileNotFoundError:
+            # 如果meta.json文件不存在，静默忽略，这在插件初始化时是正常的
+            pass
+        except Exception:
+            # 忽略其他配置写入错误，不影响插件正常运行
+            pass
 
 ensure_config_keys()
 
@@ -160,8 +174,7 @@ def generate_trigger_points():
     max_points = 100  # 可以根据需要调整
 
     long_trigger_points = list(range(long_interval, max_points * long_interval + 1, long_interval))
-    all_short_points = list(range(short_interval, max_points * short_interval + 1, short_interval))
-    short_trigger_points = [p for p in all_short_points if p not in long_trigger_points]
+    short_trigger_points = list(range(short_interval, max_points * short_interval + 1, short_interval))
 
 def update_counter():
     global learned_counter, counter_label, last_total, last_counter, next_long_trigger_index, next_short_trigger_index
@@ -185,18 +198,33 @@ def update_counter():
 def check_popup_trigger():
     """延迟检查弹窗触发，确保卡片切换完成后再弹窗"""
     global learned_counter, next_long_trigger_index, next_short_trigger_index
-    
-    # 检查是否需要触发提示
+
+    # 检查长间隔触发
+    long_triggered = False
     if next_long_trigger_index < len(long_trigger_points) and learned_counter >= long_trigger_points[next_long_trigger_index]:
         show_quote(is_long_progress=True)
         next_long_trigger_index += 1
-        next_short_trigger_index = next((i for i, v in enumerate(short_trigger_points) if v > learned_counter), len(short_trigger_points))
-    elif next_short_trigger_index < len(short_trigger_points) and learned_counter >= short_trigger_points[next_short_trigger_index]:
+        long_triggered = True
+
+    # 检查短间隔触发（只有在长间隔没有触发时才检查）
+    if not long_triggered and next_short_trigger_index < len(short_trigger_points) and learned_counter >= short_trigger_points[next_short_trigger_index]:
         show_quote(is_long_progress=False)
         next_short_trigger_index += 1
 
 def show_quote(is_long_progress=False):
     global popup_counter, last_shown_image
+
+    # 检查是否启用了弹窗功能
+    if is_long_progress:
+        use_text_popup = config.get('long_use_text_popup', True)
+        use_image_popup = config.get('long_use_image_popup', False)
+    else:
+        use_text_popup = config.get('short_use_text_popup', True)
+        use_image_popup = config.get('short_use_image_popup', False)
+
+    # 如果两种弹窗都没有启用，直接返回
+    if not use_text_popup and not use_image_popup:
+        return
 
     # 每次触发提示时增加 popup_counter
     popup_counter += 1
@@ -235,7 +263,28 @@ def show_quote(is_long_progress=False):
     if use_images and image_folder and os.path.exists(image_folder):
         image_files = [f for f in os.listdir(image_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
         if image_files:
-            candidate = os.path.join(image_folder, random.choice(image_files))
+            # 将文件名转为完整路径
+            all_image_paths = [os.path.join(image_folder, f) for f in image_files]
+
+            # 优先选择未在历史记录中的图片
+            unshown_images = [path for path in all_image_paths if path not in image_history]
+
+            if unshown_images:
+                # 如果有未显示过的图片，从中随机选择
+                candidate = random.choice(unshown_images)
+            else:
+                # 如果所有图片都显示过，从最旧的开始重新选择
+                # 排除最近显示的几张图片，避免连续重复
+                recent_count = min(len(image_history), len(all_image_paths) // 2)
+                recent_images = image_history[:recent_count] if recent_count > 0 else []
+                available_images = [path for path in all_image_paths if path not in recent_images]
+
+                if available_images:
+                    candidate = random.choice(available_images)
+                else:
+                    # 如果连这个逻辑都失败了，就从所有图片中随机选择
+                    candidate = random.choice(all_image_paths)
+
             if os.path.exists(candidate):
                 image_path = candidate
 
@@ -571,9 +620,9 @@ def create_about_section():
 
     # 定义链接
     links = [
-        ("Showcase", "https://github.com/campfirium/anki-one-more-turn"),
-        ("Feedback", "https://github.com/campfirium/anki-one-more-turn"),
-        ("Support", "https://github.com/campfirium/anki-one-more-turn"),
+        ("Showcase", "https://youtu.be/ZQylyGdv7h8"),
+        ("Feedback", "https://github.com/campfirium/anki-one-more-turn/issues"),
+        ("Support", "https://campfirium.info/t/one-more-turn%EF%BC%9Acustomizable-pop-up-rewards-for-anki/666"),
         ("Source", "https://github.com/campfirium/anki-one-more-turn")
     ]
 
@@ -942,10 +991,45 @@ def save_panel_settings(dialog):
                 config[obj_name] = child.text()
             elif isinstance(child, QPlainTextEdit):
                 config[obj_name] = child.toPlainText()
-    
-    
+
+
     # 写入配置文件
-    mw.addonManager.writeConfig(__name__, config)
+    try:
+        mw.addonManager.writeConfig(__name__, config)
+    except FileNotFoundError as e:
+        # 如果meta.json文件不存在，尝试创建基本的meta.json文件
+        try:
+            addon_dir = os.path.dirname(__file__)
+            meta_path = os.path.join(addon_dir, "meta.json")
+
+            # 创建基本的meta.json结构
+            meta_data = {
+                "config": config,
+                "disabled": False,
+                "mod": 0,
+                "conflicts": [],
+                "max_point_version": 0,
+                "min_point_version": 0,
+                "branch_index": 0,
+                "update_enabled": True
+            }
+
+            with open(meta_path, 'w', encoding='utf-8') as f:
+                json.dump(meta_data, f, indent=2, ensure_ascii=False)
+
+            # 再次尝试写入配置
+            mw.addonManager.writeConfig(__name__, config)
+        except Exception as write_error:
+            # 如果仍然失败，显示错误信息但不阻止用户继续使用
+            mw.utils.showWarning(f"Warning: Could not save settings to meta.json file. "
+                               f"Settings may not persist after restart.\n\n"
+                               f"Error: {str(write_error)}")
+    except Exception as e:
+        # 处理其他可能的写入错误
+        mw.utils.showWarning(f"Warning: Could not save settings. "
+                           f"Settings may not persist after restart.\n\n"
+                           f"Error: {str(e)}")
+
     generate_trigger_points()  # 重新生成触发点
     dialog.accept()
 
