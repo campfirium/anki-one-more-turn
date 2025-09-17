@@ -21,7 +21,12 @@ def safe_delete_file(path):
 
 
 # 加载设置
-config = mw.addonManager.getConfig(__name__)
+try:
+    config = mw.addonManager.getConfig(__name__)
+    if config is None:
+        config = {}
+except Exception:
+    config = {}
 
 # 初始化计数器
 counter = 0
@@ -41,8 +46,8 @@ short_trigger_points = []
 next_long_trigger_index = 0
 next_short_trigger_index = 0
 
-# 加载配置
-config = mw.addonManager.getConfig(__name__)
+# 配置已经在上面加载过了，不需要重复加载
+# config = mw.addonManager.getConfig(__name__)  # 删除重复加载
 
 # 只在必要时添加缺失的新参数，不覆盖现有配置
 def ensure_config_keys():
@@ -54,6 +59,7 @@ def ensure_config_keys():
         'short_cards_completed': 10,
         'short_auto_close': True,
         'short_auto_close_duration': 2000,  # 2秒 = 2000毫秒
+        'short_use_text_popup': True,  # 添加缺失的关键配置项
         'short_font_size': 16,
         'short_custom_quotes': '+10 XP\nLEVEL UP!',
         'short_text_width': 1200,
@@ -69,6 +75,7 @@ def ensure_config_keys():
         'long_cards_completed': 50,
         'long_auto_close': True,
         'long_auto_close_duration': 5000,  # 5秒 = 5000毫秒
+        'long_use_text_popup': True,  # 添加缺失的关键配置项
         'long_font_size': 24,
         'long_custom_quotes': 'Great oaks from little acorns grow.\nThe constant drip hollows the stone.\nFrom tiny sparks grow mighty flames.\nPatience is bitter, but its fruit is sweet.\nConsistency is the mother of mastery.',
         'long_text_width': 2400,
@@ -204,6 +211,18 @@ def check_popup_trigger():
 
 def show_quote(is_long_progress=False):
     global popup_counter, last_shown_image
+
+    # 检查是否启用了弹窗功能
+    if is_long_progress:
+        use_text_popup = config.get('long_use_text_popup', True)
+        use_image_popup = config.get('long_use_image_popup', False)
+    else:
+        use_text_popup = config.get('short_use_text_popup', True)
+        use_image_popup = config.get('short_use_image_popup', False)
+
+    # 如果两种弹窗都没有启用，直接返回
+    if not use_text_popup and not use_image_popup:
+        return
 
     # 每次触发提示时增加 popup_counter
     popup_counter += 1
