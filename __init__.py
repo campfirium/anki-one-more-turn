@@ -620,9 +620,9 @@ def create_about_section():
 
     # 定义链接
     links = [
-        ("Showcase", "https://github.com/campfirium/anki-one-more-turn"),
-        ("Feedback", "https://github.com/campfirium/anki-one-more-turn"),
-        ("Support", "https://github.com/campfirium/anki-one-more-turn"),
+        ("Showcase", "https://youtu.be/ZQylyGdv7h8"),
+        ("Feedback", "https://github.com/campfirium/anki-one-more-turn/issues"),
+        ("Support", "https://campfirium.info/t/one-more-turn%EF%BC%9Acustomizable-pop-up-rewards-for-anki/666"),
         ("Source", "https://github.com/campfirium/anki-one-more-turn")
     ]
 
