@@ -174,8 +174,7 @@ def generate_trigger_points():
     max_points = 100  # 可以根据需要调整
 
     long_trigger_points = list(range(long_interval, max_points * long_interval + 1, long_interval))
-    all_short_points = list(range(short_interval, max_points * short_interval + 1, short_interval))
-    short_trigger_points = [p for p in all_short_points if p not in long_trigger_points]
+    short_trigger_points = list(range(short_interval, max_points * short_interval + 1, short_interval))
 
 def update_counter():
     global learned_counter, counter_label, last_total, last_counter, next_long_trigger_index, next_short_trigger_index
@@ -199,13 +198,16 @@ def update_counter():
 def check_popup_trigger():
     """延迟检查弹窗触发，确保卡片切换完成后再弹窗"""
     global learned_counter, next_long_trigger_index, next_short_trigger_index
-    
-    # 检查是否需要触发提示
+
+    # 检查长间隔触发
+    long_triggered = False
     if next_long_trigger_index < len(long_trigger_points) and learned_counter >= long_trigger_points[next_long_trigger_index]:
         show_quote(is_long_progress=True)
         next_long_trigger_index += 1
-        next_short_trigger_index = next((i for i, v in enumerate(short_trigger_points) if v > learned_counter), len(short_trigger_points))
-    elif next_short_trigger_index < len(short_trigger_points) and learned_counter >= short_trigger_points[next_short_trigger_index]:
+        long_triggered = True
+
+    # 检查短间隔触发（只有在长间隔没有触发时才检查）
+    if not long_triggered and next_short_trigger_index < len(short_trigger_points) and learned_counter >= short_trigger_points[next_short_trigger_index]:
         show_quote(is_long_progress=False)
         next_short_trigger_index += 1
 
@@ -261,7 +263,28 @@ def show_quote(is_long_progress=False):
     if use_images and image_folder and os.path.exists(image_folder):
         image_files = [f for f in os.listdir(image_folder) if f.lower().endswith(('.png', '.jpg', '.jpeg', '.gif'))]
         if image_files:
-            candidate = os.path.join(image_folder, random.choice(image_files))
+            # 将文件名转为完整路径
+            all_image_paths = [os.path.join(image_folder, f) for f in image_files]
+
+            # 优先选择未在历史记录中的图片
+            unshown_images = [path for path in all_image_paths if path not in image_history]
+
+            if unshown_images:
+                # 如果有未显示过的图片，从中随机选择
+                candidate = random.choice(unshown_images)
+            else:
+                # 如果所有图片都显示过，从最旧的开始重新选择
+                # 排除最近显示的几张图片，避免连续重复
+                recent_count = min(len(image_history), len(all_image_paths) // 2)
+                recent_images = image_history[:recent_count] if recent_count > 0 else []
+                available_images = [path for path in all_image_paths if path not in recent_images]
+
+                if available_images:
+                    candidate = random.choice(available_images)
+                else:
+                    # 如果连这个逻辑都失败了，就从所有图片中随机选择
+                    candidate = random.choice(all_image_paths)
+
             if os.path.exists(candidate):
                 image_path = candidate
 
