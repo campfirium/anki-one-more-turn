@@ -795,24 +795,24 @@ def create_compact_text_settings(prefix):
     
     # 尺寸设置 - 固定宽度对齐
     size_layout = QHBoxLayout()
-    width_label = QLabel("Width:")
+    width_label = QLabel("Width %:")
     width_label.setFixedWidth(60)  # 左对齐标签
     size_layout.addWidget(width_label)
     text_width = QSpinBox()
-    text_width.setRange(100, 99999)  # 与图片弹窗保持一致的范围
-    text_width.setValue(config.get(f'{prefix}_text_width', 2400 if prefix == 'long' else 1200))  
-    text_width.setObjectName(f'{prefix}_text_width')
+    text_width.setRange(1, 100)  # 百分比范围 1-100%
+    text_width.setValue(config.get(f'{prefix}_text_width_percent', 63 if prefix == 'long' else 31))
+    text_width.setObjectName(f'{prefix}_text_width_percent')
     text_width.setFixedWidth(120)  # 固定宽度对齐
     size_layout.addWidget(text_width)
     size_layout.addStretch()
     
-    height_label = QLabel("Height:")
+    height_label = QLabel("Height %:")
     height_label.setFixedWidth(60)  # 左对齐标签
     size_layout.addWidget(height_label)
     text_height = QSpinBox()
-    text_height.setRange(100, 99999)  # 与图片弹窗保持一致的范围
-    text_height.setValue(config.get(f'{prefix}_text_height', 600 if prefix == 'long' else 400))  
-    text_height.setObjectName(f'{prefix}_text_height')
+    text_height.setRange(1, 100)  # 百分比范围 1-100%
+    text_height.setValue(config.get(f'{prefix}_text_height_percent', 28 if prefix == 'long' else 19))
+    text_height.setObjectName(f'{prefix}_text_height_percent')
     text_height.setFixedWidth(120)  # 固定宽度对齐
     size_layout.addWidget(text_height)
     
@@ -878,24 +878,24 @@ def create_compact_image_settings(prefix):
     
     # 尺寸设置 - 固定宽度对齐
     size_layout = QHBoxLayout()
-    width_label = QLabel("Width:")
+    width_label = QLabel("Width %:")
     width_label.setFixedWidth(60)  # 左对齐标签
     size_layout.addWidget(width_label)
     popup_width = QSpinBox()
-    popup_width.setRange(100, 99999)
-    popup_width.setValue(config.get(f'{prefix}_image_width', 3920 if prefix == 'long' else 2480))
-    popup_width.setObjectName(f'{prefix}_image_width')
+    popup_width.setRange(1, 100)  # 百分比范围 1-100%
+    popup_width.setValue(config.get(f'{prefix}_image_width_percent', 100 if prefix == 'long' else 65))
+    popup_width.setObjectName(f'{prefix}_image_width_percent')
     popup_width.setFixedWidth(120)  # 固定宽度对齐
     size_layout.addWidget(popup_width)
     size_layout.addStretch()
     
-    height_label = QLabel("Height:")
+    height_label = QLabel("Height %:")
     height_label.setFixedWidth(60)  # 左对齐标签
     size_layout.addWidget(height_label)
     popup_height = QSpinBox()
-    popup_height.setRange(100, 99999)
-    popup_height.setValue(config.get(f'{prefix}_image_height', 2160 if prefix == 'long' else 1620))
-    popup_height.setObjectName(f'{prefix}_image_height')
+    popup_height.setRange(1, 100)  # 百分比范围 1-100%
+    popup_height.setValue(config.get(f'{prefix}_image_height_percent', 100 if prefix == 'long' else 75))
+    popup_height.setObjectName(f'{prefix}_image_height_percent')
     popup_height.setFixedWidth(120)  # 固定宽度对齐
     size_layout.addWidget(popup_height)
     
