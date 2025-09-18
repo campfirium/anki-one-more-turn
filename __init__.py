@@ -19,6 +19,41 @@ def safe_delete_file(path):
         if os.path.exists(path):
             os.remove(path)
 
+# 根据百分比计算实际像素尺寸（考虑DPI缩放）
+def calculate_size_from_percentage(width_percent, height_percent):
+    """根据百分比计算当前屏幕的实际像素尺寸，正确处理DPI缩放"""
+    try:
+        from aqt.qt import QApplication
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.geometry()
+
+        # 获取逻辑像素尺寸
+        logical_width = screen_geometry.width()
+        logical_height = screen_geometry.height()
+
+        # 获取DPI缩放比例
+        device_pixel_ratio = screen.devicePixelRatio()
+
+        # 计算物理像素尺寸
+        physical_width = logical_width * device_pixel_ratio
+        physical_height = logical_height * device_pixel_ratio
+
+        # 基于物理像素计算百分比，然后转换回逻辑像素供Qt使用
+        target_physical_width = int(physical_width * width_percent / 100)
+        target_physical_height = int(physical_height * height_percent / 100)
+
+        # 转换为逻辑像素（Qt控件使用逻辑像素）
+        actual_width = min(int(target_physical_width / device_pixel_ratio), logical_width)
+        actual_height = min(int(target_physical_height / device_pixel_ratio), logical_height)
+
+        return actual_width, actual_height
+
+    except Exception as e:
+        # 回退到1080p基准（假设100% DPI）
+        fallback_width = int(1920 * width_percent / 100)
+        fallback_height = int(1080 * height_percent / 100)
+        return min(fallback_width, 1920), min(fallback_height, 1080)
+
 
 # 加载设置
 try:
@@ -55,6 +90,7 @@ def ensure_config_keys():
     config_changed = False
 
     # 定义当前版本需要的所有参数及其默认值（根据正确界面截图）
+    # 定义当前版本需要的所有参数及其默认值（使用百分比）
     required_keys = {
         'short_cards_completed': 10,
         'short_auto_close': True,
@@ -62,14 +98,14 @@ def ensure_config_keys():
         'short_use_text_popup': True,  # 添加缺失的关键配置项
         'short_font_size': 16,
         'short_custom_quotes': '+10 XP\nLEVEL UP!',
-        'short_text_width': 1200,
-        'short_text_height': 400,
+        'short_text_width_percent': 31,    # 31% 屏幕宽度
+        'short_text_height_percent': 19,   # 19% 屏幕高度
         'short_text_offset_x': 0,
         'short_text_offset_y': 10,  # 10%
         'short_use_image_popup': False,
         'short_image_folder': '',
-        'short_image_width': 2480,
-        'short_image_height': 1620,
+        'short_image_width_percent': 65,   # 65% 屏幕宽度
+        'short_image_height_percent': 75,  # 75% 屏幕高度
         'short_image_offset_x': 0,
         'short_image_offset_y': 0,
         'long_cards_completed': 50,
@@ -78,14 +114,14 @@ def ensure_config_keys():
         'long_use_text_popup': True,  # 添加缺失的关键配置项
         'long_font_size': 24,
         'long_custom_quotes': 'Great oaks from little acorns grow.\nThe constant drip hollows the stone.\nFrom tiny sparks grow mighty flames.\nPatience is bitter, but its fruit is sweet.\nConsistency is the mother of mastery.',
-        'long_text_width': 2400,
-        'long_text_height': 600,
+        'long_text_width_percent': 63,     # 63% 屏幕宽度
+        'long_text_height_percent': 28,    # 28% 屏幕高度
         'long_text_offset_x': 0,
         'long_text_offset_y': 10,  # 10%
         'long_use_image_popup': False,
         'long_image_folder': '',
-        'long_image_width': 3920,
-        'long_image_height': 2160,
+        'long_image_width_percent': 100,   # 100% 屏幕宽度（全屏）
+        'long_image_height_percent': 100,  # 100% 屏幕高度（全屏）
         'long_image_offset_x': 0,
         'long_image_offset_y': 0
     }
@@ -229,11 +265,12 @@ def show_quote(is_long_progress=False):
     # 每次触发提示时增加 popup_counter
     popup_counter += 1
 
-    # 读取配置（与当前版保持一致的键名与默认值）
+    # 读取配置（使用百分比参数）
     if is_long_progress:
         custom_quotes = config.get('long_custom_quotes', "+10 XP\nLEVEL UP!")
-        popup_width = config.get('long_image_width', 3920)
-        popup_height = config.get('long_image_height', 2160)
+        width_percent = config.get('long_image_width_percent', 100)
+        height_percent = config.get('long_image_height_percent', 100)
+        popup_width, popup_height = calculate_size_from_percentage(width_percent, height_percent)
         x_offset = config.get('long_image_offset_x', 0)
         y_offset = config.get('long_image_offset_y', 0)
         auto_close = config.get('long_auto_close', True)
@@ -242,8 +279,9 @@ def show_quote(is_long_progress=False):
         image_folder = config.get('long_image_folder', "")
     else:
         custom_quotes = config.get('short_custom_quotes', "+10 XP\nLEVEL UP!")
-        popup_width = config.get('short_image_width', 2480)
-        popup_height = config.get('short_image_height', 1620)
+        width_percent = config.get('short_image_width_percent', 65)
+        height_percent = config.get('short_image_height_percent', 75)
+        popup_width, popup_height = calculate_size_from_percentage(width_percent, height_percent)
         x_offset = config.get('short_image_offset_x', 0)
         y_offset = config.get('short_image_offset_y', 0)
         auto_close = config.get('short_auto_close', True)
@@ -302,13 +340,11 @@ def show_quote(is_long_progress=False):
         # 检测是否是全屏模式（根据尺寸判断）
         screen = QApplication.primaryScreen()
         screen_size = screen.geometry()
-        scale_factor = screen.devicePixelRatio()
-        adjusted_width = int(popup_width / scale_factor)
-        adjusted_height = int(popup_height / scale_factor)
-        
+
+        # 直接使用计算好的逻辑像素尺寸（已在calculate_size_from_percentage中处理DPI）
         # 如果弹窗尺寸接近屏幕尺寸（90%以上），认为是全屏模式
-        is_fullscreen = (adjusted_width >= screen_size.width() * 0.9 or 
-                        adjusted_height >= screen_size.height() * 0.9)
+        is_fullscreen = (popup_width >= screen_size.width() * 0.9 or
+                        popup_height >= screen_size.height() * 0.9)
         
         if is_fullscreen:
             # 全屏模式：保持原有的无边框样式
@@ -407,9 +443,11 @@ def show_quote(is_long_progress=False):
         dialog.setWindowTitle(f"{popup_counter} HIT{'!' * popup_counter}")
         layout = QVBoxLayout(dialog)
         
-        # 获取文本弹窗的具体设置
-        text_width = config.get(f'{("long" if is_long_progress else "short")}_text_width', 1200 if not is_long_progress else 2400)
-        text_height = config.get(f'{("long" if is_long_progress else "short")}_text_height', 400 if not is_long_progress else 600)
+        # 获取文本弹窗的具体设置（使用百分比）
+        prefix = "long" if is_long_progress else "short"
+        text_width_percent = config.get(f'{prefix}_text_width_percent', 63 if is_long_progress else 31)
+        text_height_percent = config.get(f'{prefix}_text_height_percent', 28 if is_long_progress else 19)
+        text_width, text_height = calculate_size_from_percentage(text_width_percent, text_height_percent)
         font_size = config.get(f'{("long" if is_long_progress else "short")}_font_size', 24 if is_long_progress else 16)
         text_x_offset = config.get(f'{("long" if is_long_progress else "short")}_text_x_offset', 0)
         text_y_offset = config.get(f'{("long" if is_long_progress else "short")}_text_y_offset', 10)
@@ -423,22 +461,18 @@ def show_quote(is_long_progress=False):
         m = layout.contentsMargins()
         layout.setContentsMargins(m.left(), max(0, m.top() - 10), m.right(), m.bottom() + 10)
 
-        # 设置尺寸和位置 - 与图片弹窗一致：按 devicePixelRatio 换算
+        # 直接使用计算好的逻辑像素尺寸（已在calculate_size_from_percentage中处理DPI）
+        dialog.setFixedSize(text_width, text_height)
+
         screen = QApplication.primaryScreen()
-        scale_factor = screen.devicePixelRatio()
-        adjusted_text_width  = int(text_width  / scale_factor)
-        adjusted_text_height = int(text_height / scale_factor)
-
-        dialog.setFixedSize(adjusted_text_width, adjusted_text_height)
-
         screen_geometry = screen.geometry()
         screen_center_x = screen_geometry.x() + screen_geometry.width() // 2
         screen_center_y = screen_geometry.y() + screen_geometry.height() // 2
         offset_x = int(screen_geometry.width() * text_x_offset / 100)
         offset_y = int(screen_geometry.height() * text_y_offset / 100)
 
-        dialog_x = screen_center_x - adjusted_text_width // 2 + offset_x
-        dialog_y = screen_center_y - adjusted_text_height // 2 - offset_y
+        dialog_x = screen_center_x - text_width // 2 + offset_x
+        dialog_y = screen_center_y - text_height // 2 - offset_y
         dialog.move(dialog_x, dialog_y)
 
 
@@ -471,17 +505,18 @@ def show_quote(is_long_progress=False):
 
     # 公共：尺寸与位置（为图片弹窗复用之前的计算，文本弹窗使用自己的定位）
     if image_path:
-        # 图片弹窗：使用之前计算的adjusted_width和adjusted_height
-        dialog.setFixedSize(adjusted_width, adjusted_height)
-        
+        # 图片弹窗：直接使用计算好的逻辑像素尺寸
+        dialog.setFixedSize(popup_width, popup_height)
+
+        screen = QApplication.primaryScreen()
         screen_geometry = screen.geometry()
         screen_center_x = screen_geometry.x() + screen_geometry.width() // 2
         screen_center_y = screen_geometry.y() + screen_geometry.height() // 2
         offset_x = int(screen_geometry.width() * x_offset / 100)
         offset_y = int(screen_geometry.height() * y_offset / 100)
 
-        dialog_x = screen_center_x - adjusted_width // 2 + offset_x
-        dialog_y = screen_center_y - adjusted_height // 2 - offset_y  # 保持当前版"正值上移"的约定
+        dialog_x = screen_center_x - popup_width // 2 + offset_x
+        dialog_y = screen_center_y - popup_height // 2 - offset_y  # 保持当前版"正值上移"的约定
         dialog.move(dialog_x, dialog_y)
 
     # 统一使用模态对话框，避免按键穿透问题
